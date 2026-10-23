@@ -1,0 +1,29 @@
+# systemd unit for hosts WITH systemd (system-wide alternative to deploy/systemd-user/).
+# Install: sudo deploy/install-systemd.sh --install [--enable] [--start]   (stop run.sh first: one Blaze per session!)
+[Unit]
+Description=Mixin bot gateway (Blaze -> webhook)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mixin
+WorkingDirectory=/opt/mixin-gateway
+Environment=MIXIN_ENV_FILE=/opt/mixin-gateway/.secrets/mixin-gateway.env
+# Optional feature flags (all default off) — or put them in the env file:
+#Environment=MIXIN_PAYLOAD_V2=1 MIXIN_WEBHOOK_QUEUE=1
+ExecStart=/opt/mixin-gateway/deploy/start-gateway.sh
+Restart=always
+RestartSec=5
+RestartPreventExitStatus=78
+TimeoutStartSec=300
+KillSignal=SIGTERM
+TimeoutStopSec=15
+StandardOutput=append:/opt/mixin-gateway/supervisor.out
+StandardError=append:/opt/mixin-gateway/supervisor.out
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

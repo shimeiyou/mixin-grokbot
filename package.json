@@ -1,0 +1,9 @@
+{
+  "name": "mixin-gateway",
+  "version": "0.1.0",
+  "description": "Keep a Mixin Messenger bot online over Blaze and forward messages to any webhook (e.g. an AI agent); CLI senders for replies, cards, media and recalls.",
+  "license": "MIT",
+  "scripts": { "test": "OFFLINE=1 ./run-tests.sh" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "@mixin.dev/mixin-node-sdk": "7.6.0" }
+}

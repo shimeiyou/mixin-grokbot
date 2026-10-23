@@ -1,0 +1,11 @@
+[Unit]
+Description=Mixin gateway daily health summary at 20:15 Asia/Shanghai
+
+[Timer]
+# explicit zone: the VPS runs Europe/London
+OnCalendar=*-*-* 20:15:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

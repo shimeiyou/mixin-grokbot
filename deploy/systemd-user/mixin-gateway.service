@@ -1,0 +1,28 @@
+# systemd --user unit for the gateway on your server (enable linger for the user). Install: deploy/systemd-user/install-units.sh
+[Unit]
+Description=Mixin bot gateway (Blaze -> webhook, send endpoint run/send.sock)
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=%h/mixin-gateway
+Environment=MIXIN_ENV_FILE=%h/.mixin-secrets/mixin-gateway.env
+Environment=PATH=%h/.local/opt/node/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NODE_OPTIONS=--max-old-space-size=160
+ExecStart=%h/mixin-gateway/deploy/start-gateway.sh
+Restart=always
+RestartSec=5
+# 78 = config error (missing env/secret): do not hot-loop
+RestartPreventExitStatus=78
+KillSignal=SIGTERM
+TimeoutStopSec=20
+UMask=0077
+MemoryHigh=220M
+MemoryMax=300M
+NoNewPrivileges=yes
+# gateway.log is written by the gateway itself; stdout/stderr (rare) go here
+StandardOutput=append:%h/mixin-gateway/supervisor.out
+StandardError=append:%h/mixin-gateway/supervisor.out
+
+[Install]
+WantedBy=default.target

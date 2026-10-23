@@ -1,0 +1,15 @@
+[Unit]
+Description=Mixin gateway daily health summary (writes run/daily-summary.txt; no AI, no network)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/mixin-gateway
+Environment=PATH=%h/.local/opt/node/bin:/usr/local/bin:/usr/bin:/bin
+# exit 1 = the summary says ALERT (the file is still written); not a unit failure
+SuccessExitStatus=1
+ExecStart=%h/.local/opt/node/bin/node %h/mixin-gateway/deploy/daily-summary.js
+TimeoutStartSec=120
+UMask=0077
+MemoryMax=100M
+StandardOutput=append:%h/mixin-gateway/run/daily-summary.log
+StandardError=append:%h/mixin-gateway/run/daily-summary.log

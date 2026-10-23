@@ -1,0 +1,5 @@
+# Example for hosts without systemd but with cron.
+# Restarts the gateway after a reboot and re-checks every 5 minutes; reinstalls node_modules if missing.
+MIXIN_ENV_FILE=$HOME/.mixin-secrets/mixin-gateway.env
+@reboot   /opt/mixin-gateway/deploy/ensure-running.sh >> /opt/mixin-gateway/ensure.log 2>&1
+*/5 * * * * /opt/mixin-gateway/deploy/ensure-running.sh >> /opt/mixin-gateway/ensure.log 2>&1

@@ -1,0 +1,2 @@
+Frozen pre-refactor snapshot of a few modules, used only by the old-vs-new regression checks in
+test-gateway.js and test-reply.js. Test-only; never run in production.

@@ -1,0 +1,14 @@
+[Unit]
+Description=Mixin gateway heartbeat check (alerts the webhook receiver once per outage)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/mixin-gateway
+Environment=MIXIN_ENV_FILE=%h/.mixin-secrets/mixin-gateway.env
+Environment=PATH=%h/.local/opt/node/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/mixin-gateway/deploy/heartbeat-alert.sh
+TimeoutStartSec=60
+UMask=0077
+MemoryMax=100M
+StandardOutput=append:%h/mixin-gateway/alert.log
+StandardError=append:%h/mixin-gateway/alert.log
