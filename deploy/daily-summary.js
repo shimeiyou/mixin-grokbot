@@ -3,7 +3,7 @@
 // Daily VPS health summary (no AI, no network, no secrets, no message bodies). Run by the systemd --user timer
 // mixin-gateway-daily.timer (20:15 Asia/Shanghai) or by hand: node deploy/daily-summary.js [--stdout]
 // Writes <gw>/run/daily-summary.txt (0600) + a dated copy run/daily/daily-summary-YYYY-MM-DD.txt (CST date; copies
-// older than MIXIN_SUMMARY_KEEP_DAYS=7 are removed). Folds in the remote health checks (service +
+// older than MIXIN_SUMMARY_KEEP_DAYS=7 are removed). Folds in the checks of the box's deploy/check-vps.sh (service +
 // heartbeat timer active, heartbeat fresh, no open heartbeat outage, no auth pause). Last line is exactly `OK` or
 // `ALERT: <reasons>`. Exit 0 = OK, 1 = ALERT. Reads only gateway.log / alert.log metadata lines, systemctl, ps, df.
 const fs = require('fs'); const path = require('path'); const os = require('os');
@@ -46,6 +46,7 @@ for (const x of g.all) {
 const recycles = cnt(/blaze recreate in \d+ms \(gen=\d+ periodic recycle\)/);
 const closes = cnt(/^blaze closed gen=/), connects = cnt(/^blaze connected gen=/);
 const outages = g.win.map((x) => /gateway reconnected after outage offline_ms=(\d+)/.exec(x.s)).filter(Boolean).map((m) => +m[1]);
+const maxOutageMs = outages.length ? Math.max(...outages) : 0;
 let merged = 0, mergedHooks = 0; for (const x of g.win) { const m = /^webhook ok .* merged=(\d+)/.exec(x.s); if (m) { mergedHooks++; merged += +m[1]; } }
 const w = {
   recv: cnt(/^recv msg=/), pushed: cnt(/^webhook ok msg=/), merged_webhooks: mergedHooks, merged_messages: merged,
@@ -89,7 +90,7 @@ if (qFiles != null && qFiles > num('MIXIN_SUMMARY_MAX_QUEUE', 20)) reasons.push(
 if (rssKb != null && rssKb > num('MIXIN_SUMMARY_MAX_RSS_MB', 200) * 1024) reasons.push(`RSS ${Math.round(rssKb / 1024)}MB`);
 if (freeMb != null && freeMb < num('MIXIN_SUMMARY_MIN_FREE_MB', 500)) reasons.push(`disk free ${freeMb}MB`);
 if (alerts.heartbeat_alerts_sent || alerts.auth_failed_alerts) reasons.push(`${alerts.heartbeat_alerts_sent + alerts.auth_failed_alerts} gateway_alert(s) sent in 24h`);
-if (outages.length) reasons.push(`${outages.length} outage(s) > threshold (max ${Math.round(Math.max(...outages) / 1000)}s)`);
+if (outages.length && (maxOutageMs >= num('MIXIN_DAILY_OUTAGE_ALERT_MS', 120000) || outages.length > num('MIXIN_DAILY_OUTAGE_ALERT_COUNT', 3))) reasons.push(`${outages.length} outage(s) > threshold (max ${Math.round(maxOutageMs / 1000)}s)`);
 
 const out = [
   `Mixin gateway daily summary — host ${env.MIXIN_ALERT_HOST || os.hostname()} — generated ${cst(NOW)} (window: last 24h since ${cst(SINCE)})`,
@@ -101,6 +102,7 @@ const out = [
   `webhooks: pushed ${w.pushed} | merged webhooks ${w.merged_webhooks} carrying ${w.merged_messages} msgs | coalesce holds ${w.coalesce_holds} | filtered ${w.filtered} | recalled-before-push ${w.recalled_unsent} | dedupe skips ${w.dedup} | retried ${w.retried} | failed ${w.failed} | queue pending ${qFiles != null ? qFiles : '-'} | new dead-letters ${deadNew}`,
   `alerts: heartbeat gateway_alert sent ${alerts.heartbeat_alerts_sent} (delivery failures ${alerts.heartbeat_alert_failed}) | auth_failed alerts ${alerts.auth_failed_alerts} | member_alert ${alerts.member_alerts}`,
   `disk: free ${freeMb != null ? freeMb + 'MB' : '-'} | gateway.log ${logMb != null ? logMb + 'MB' : '-'}`,
+  `box-side checks (not visible from the VPS): no box gateway + deploy/MIGRATED_TO_VPS marker — the box refuses to start a gateway while the marker exists`,
   reasons.length ? `ALERT: ${reasons.join('; ')}` : 'OK',
 ].join('\n') + '\n';
 
