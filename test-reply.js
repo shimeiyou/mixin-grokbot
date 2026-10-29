@@ -169,7 +169,7 @@ const norm = (m) => ({ ...m, data_base64: undefined });
   { const n = await run([...base, '--sticker', STK]); check('reply log has no message content', !fs.readFileSync(path.join(W, 'new.log'), 'utf8').includes('看图') && !fs.readFileSync(path.join(W, 'new.log'), 'utf8').includes('这是图')); }
   // ---- D) --help / -h ----
   { const { spawn } = require('child_process'); const W2 = tmpdir('reply-help-');
-    const src = fs.readFileSync(path.join(HERE, 'reply.js'), 'utf8');
+    const src = ['reply.js', 'reply-args.js', 'reply-items.js', 'reply-send.js'].map((f) => fs.readFileSync(path.join(HERE, f), 'utf8')).join('\n');
     const content = JSON.parse(src.match(/const CONTENT = (\[[^\]]+\])/)[1].replace(/'/g, '"'));
     const flags = [...new Set([...src.matchAll(/\bo\.([a-z]+)\b|o\['([a-z-]+)'\]/g)].map((m) => m[1] || m[2]).concat(content))]; // every flag reply.js reads
     const runHelp = (args) => new Promise((res) => {

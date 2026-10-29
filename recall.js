@@ -1,17 +1,4 @@
 'use strict';
-// reply.js --recall <message_id>[,<id>...] (repeatable): recall messages the bot itself sent.
-// Protocol: category MESSAGE_RECALL, data {"message_id":"<target>"}. Official clients send it as a PLAIN control
-// message (there is no ENCRYPTED_ form): Android SendMessageJob L201 routes isRecall() to sendPlainMessage (Blaze
-// CREATE_MESSAGE, no recipient_id); flutter sending_job.dart _runRecallJob L120-145 the same; receivers handle it by
-// its raw category (Android DecryptMessage L223, flutter decrypt_message.dart L196). It carries only the target id.
-//  - CONTACT: REST POST /messages with recipient_id (1:1 keeps the existing plain path).
-//  - GROUP: refused by default (a group recall can only be sent unencrypted). MIXIN_GROUP_RECALL=1 explicitly allows
-//    it: Blaze CREATE_MESSAGE without recipient_id via the gateway endpoint (main connection) ONLY. Endpoint unreachable
-//    -> exit 1 code ENDPOINT_UNAVAILABLE (no second Blaze connection, audit W-6). With an ssh: endpoint the recall is
-//    also mirrored to the gateway host (its context store drops the recalled message).
-//  - Every target must be one of OUR messages in THIS conversation (sent-log.js: sent-log / context store / gateway.log),
-//    otherwise nothing at all is sent (exit 2). Recall ids are UUIDv5("mixin-recall:<target>") -> retries are idempotent.
-// exit: 0 all recalled, 1 send failed (JSON lists what was recalled), 2 refused/usage (nothing sent).
 const { v5: uuidv5 } = require('uuid');
 const NS = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

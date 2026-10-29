@@ -1,6 +1,4 @@
 'use strict';
-// Per-conversation recent-message store (JSON file per conversation, atomic writes, size/age caps).
-// Holds message text on disk; never logs bodies.
 const fs = require('fs');
 const path = require('path');
 
@@ -44,7 +42,6 @@ function prune(list, c, now = Date.now()) {
   return out;
 }
 
-// entry: {conversation_id, user_id, message_id, text, created_at, from_bot}
 function append(entry, over) {
   const c = cfg(over);
   if (!entry || !entry.conversation_id || !entry.message_id || !safeId(entry.conversation_id)) return false;
@@ -68,14 +65,12 @@ function append(entry, over) {
   });
 }
 
-// Recent context, oldest first, excluding excludeId.
 function recent(conversationId, excludeId, over) {
   const c = cfg(over);
   if (!safeId(conversationId)) return [];
   return prune(readRaw(fileFor(c, conversationId)), c).filter((m) => m.message_id !== excludeId)
     .map(({ user_id, message_id, text, created_at, from_bot }) => ({ user_id, message_id, text, created_at, from_bot }));
 }
-// Remove one message (e.g. after MESSAGE_RECALL). Returns true if something was removed.
 function remove(conversationId, messageId, over) {
   const c = cfg(over);
   if (!safeId(conversationId) || !messageId) return false;

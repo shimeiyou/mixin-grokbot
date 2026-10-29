@@ -1,15 +1,4 @@
 'use strict';
-// Final webhook payload shaping (applied right before the payload is queued/sent, after enrichment).
-//  1) fixed key order: every core + V2 field first, unknown/future fields after them, `context` LAST
-//     (so a receiver that cuts the body at N bytes loses old context first, never display_text/sender_*/attachment).
-//     Inside `attachment` the big `thumbnail` goes last for the same reason.
-//  2) each context item's text (and quote.text) is cut to itemMaxChars (MIXIN_CONTEXT_ITEM_MAX_CHARS, default 500;
-//     code points); cut items get `text_truncated: true`.
-//  3) the whole JSON body is kept <= maxBytes UTF-8 bytes (MIXIN_WEBHOOK_MAX_BYTES, default 6000; <=0 disables)
-//     by dropping the OLDEST context items first; if it still does not fit with context: [], text/display_text are cut
-//     and `truncated: true` is added. Drops/cuts add `context_truncated: true` and `context_dropped: N`.
-// Additive only: no field is renamed or removed. Idempotent (re-running on a capped payload keeps the counts right).
-// Never logs content.
 
 const ORDER = [
   'conversation_id', 'user_id', 'message_id', 'category', 'text', 'created_at', 'encrypted', 'original_category',
@@ -35,7 +24,6 @@ function orderAttachment(a) {
   return out;
 }
 
-// Rebuild the payload with the fixed key order. `over` replaces/sets values (undefined = keep source value).
 function ordered(src, over = {}) {
   const v = { ...src, ...over };
   const out = {};
@@ -50,7 +38,6 @@ function cfgFromEnv(env = process.env) {
   return { maxBytes: i('MIXIN_WEBHOOK_MAX_BYTES', 6000), itemMaxChars: i('MIXIN_CONTEXT_ITEM_MAX_CHARS', 500) };
 }
 
-// Returns { payload, info } ; info = { before, after, dropped, itemsCut, textCut, over }.
 function capPayload(input, opts = {}) {
   const maxBytes = opts.maxBytes ?? 6000, itemMaxChars = opts.itemMaxChars ?? 500;
   const before = bytes(input);
@@ -67,8 +54,6 @@ function capPayload(input, opts = {}) {
       return { ...m, text: t, text_truncated: true };
     });
   }
-  // quote.text comes from the context store (up to MIXIN_CONTEXT_MAX_TEXT=2000 chars) — same per-item cap as context
-  // (the in-memory quote cache already stores <=500 chars). Field kept, only shortened, marked quote.text_truncated.
   if (input.quote && typeof input.quote === 'object' && typeof input.quote.text === 'string' && itemMaxChars > 0) {
     const t = cutChars(input.quote.text, itemMaxChars);
     if (t !== input.quote.text) { over.quote = { ...input.quote, text: t, text_truncated: true }; info.quoteCut = true; }
@@ -89,7 +74,6 @@ function capPayload(input, opts = {}) {
     info.dropped = start;
   }
   if (maxBytes > 0 && bytes(out) > maxBytes) {
-    // No context left (or none at all): cut text/display_text to the largest length that fits.
     const fields = ['text', 'display_text'].filter((k) => typeof out[k] === 'string');
     const full = Math.max(0, ...fields.map((k) => cps(out[k]).length));
     const withLen = (n) => { const o = { truncated: true }; for (const k of fields) o[k] = cutChars(input[k] ?? out[k], n); return o; };
@@ -107,7 +91,6 @@ function capPayload(input, opts = {}) {
   return { payload: out, info };
 }
 
-// Factory used by gateway.js / webhook-queue.js: (payload) -> capped payload; logs sizes only when something changed.
 function createFinalizer({ log = () => {}, maxBytes, itemMaxChars } = {}) {
   const env = cfgFromEnv();
   const o = { maxBytes: maxBytes ?? env.maxBytes, itemMaxChars: itemMaxChars ?? env.itemMaxChars };

@@ -1,9 +1,4 @@
 'use strict';
-// Metadata-only log of delivery receipts (ACKNOWLEDGE_MESSAGE_RECEIPT frames) for the bot's OWN message ids.
-// Logs: message id, status, receipt updated_at, and user/session id prefixes when the frame carries them.
-// Never logs bodies. Never ACKs (receipts are not ACKed by official clients either; blaze-conn returns before ACK).
-// Own ids come from sent-log.jsonl (written by reply.js), re-read only when that file changes.
-// Disable with MIXIN_RECEIPT_LOG=0.
 const fs = require('fs');
 const sentLog = require('./sent-log');
 

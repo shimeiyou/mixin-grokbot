@@ -1,16 +1,4 @@
 'use strict';
-// Conversation targeting for reply.js: CONTACT vs GROUP, and the recipient sessions of a group.
-//  - category: CONTACT when conversation_id == UniqueConversationId(bot, --user) (no API call, same formula as the
-//    Go SDK / clients); otherwise GET /conversations/{id}. The category of a conversation never changes, so it is cached
-//    on disk (MIXIN_CONV_CACHE_FILE, default ./conv-cache.json, 0600; ids + category only, no names, no keys, max 1000).
-//  - groupSessions: every participant session except the bot's own (participant_sessions from GET /conversations;
-//    participants that have no listed session are looked up once with POST /sessions/fetch). Any participant without a
-//    session that has a public_key -> `missing` is non-empty (the caller must not group-encrypt; reply.js falls back to a
-//    private encrypted message).
-//  - members: the same data per member (sessions, sessions with a public key, can_receive, reason) for
-//    check-encryption.js and the gateway's member-change check (member-watch.js).
-//  - invalidate: drop a conversation from the in-memory memo and from conv-cache.json (gateway calls it on
-//    SYSTEM_CONVERSATION events). Sessions are never cached on disk; reply.js fetches them per run.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -43,7 +31,6 @@ function createConvInfo({ api, botId, log = () => {}, cacheFile = process.env.MI
     if (c.category === 'CONTACT' || c.category === 'GROUP') { const d = load(); if (!d[id] || d[id].category !== c.category) { d[id] = { category: c.category, at: Date.now() }; save(); } }
     return c;
   }
-  // -> 'CONTACT' | 'GROUP' | null (unknown: lookup failed)
   async function category(id, userId) {
     if (userId && botId && uniqueConversationId(botId, userId) === id) return 'CONTACT';
     const d = load(); if (d[id] && (d[id].category === 'CONTACT' || d[id].category === 'GROUP')) return d[id].category;
@@ -56,8 +43,6 @@ function createConvInfo({ api, botId, log = () => {}, cacheFile = process.env.MI
     if (d[id]) { delete d[id]; save(); return true; }
     return false;
   }
-  // Per-member view (bot excluded). can_receive = at least one session and every session has a public_key
-  // (the same rule groupSessions uses for `missing`).
   async function members(id, { fresh = false } = {}) {
     const g = await groupSessions(id, { fresh });
     return { conversation: g.conversation, members: g.byUser.map(([u, l]) => {
@@ -81,8 +66,7 @@ function createConvInfo({ api, botId, log = () => {}, cacheFile = process.env.MI
       if (!l.length || l.some((s) => !s.public_key)) missing.push(u);
       for (const s of l) if (!seenS.has(s.session_id)) { seenS.add(s.session_id); sessions.push({ user_id: u, session_id: s.session_id, public_key: s.public_key }); }
     }
-    // Blaze conversation_checksum as the clients compute it (Android SenderKey.getCheckSum / flutter sender.getCheckSum):
-    // md5 of ALL participant_sessions session ids of the conversation as the server lists them, sorted, sender's own included.
+    // Blaze conversation_checksum: MD5 of sorted participant_sessions session_ids.
     const allIds = [...new Set((c.participant_sessions || []).map((s) => s && s.session_id).filter(Boolean))];
     const result = { sessions, missing, participants: byUser.size, allSessionIds: allIds };
     Object.defineProperty(result, 'byUser', { value: [...byUser], enumerable: false });

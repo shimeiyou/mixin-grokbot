@@ -1,8 +1,4 @@
 'use strict';
-// 2026-10-19: (a) outage annotation for inbound payloads, (b) auth circuit-breaker alert (kind:"gateway_alert",
-// status:"auth_failed"), (c) the last-alive stamp that lets a restarted gateway know how long it was away.
-// Additive only: normal payloads get `offline_ms` (+ `gateway_status`) ONLY when the preceding outage was longer than
-// MIXIN_OFFLINE_THRESHOLD_MS; nothing else changes. No message content is logged.
 const fs = require('fs'); const path = require('path'); const os = require('os');
 const { v5: uuidv5, v4: uuidv4 } = require('uuid');
 const NS = '6ba7b811-9dad-11d1-80b4-00c04fd430c8';
@@ -14,17 +10,11 @@ function writeJson(f, o) {
   const tmp = `${f}.${process.pid}.tmp`; fs.writeFileSync(tmp, JSON.stringify(o), { mode: 0o600 }); fs.renameSync(tmp, f);
 }
 
-// ---- (c) last-alive stamp: {t} = last moment Blaze was known OPEN; read once at start ----
 function readAlive(file, maxAgeMs = 7 * 86400e3, now = Date.now()) {
   const s = readJson(file); const t = s && Number(s.t);
   return Number.isFinite(t) && t <= now && now - t <= maxAgeMs ? t : null;
 }
 
-// ---- (a) outage annotation ----
-// mark(info) is called on every successful reconnect (blaze-conn onReconnect). Outages <= thresholdMs (e.g. the 10-min
-// recycle, ~0.1-0.3s) are ignored. After a longer one, messages received within windowMs of the reconnect whose
-// created_at is not later than reconnected_at + graceMs (i.e. the backlog that waited in Mixin's pending list; or
-// created_at unknown) get: offline_ms (int, top level) + gateway_status{offline_ms, offline_since, reconnected_at, reason}.
 function createOutageMarker({ log, thresholdMs = 30000, windowMs = 600000, graceMs = 2000 }) {
   let last = null;
   return {
@@ -46,7 +36,6 @@ function createOutageMarker({ log, thresholdMs = 30000, windowMs = 600000, grace
   };
 }
 
-// ---- (b) auth_failed alert: same envelope as deploy/heartbeat-alert.js gateway_alert; once per outage (state file) ----
 function createAuthAlert({ log, submit, stateFile, botId, env = process.env, v2 = false }) {
   return {
     onFailed(info) {

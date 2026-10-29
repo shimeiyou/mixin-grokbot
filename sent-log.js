@@ -1,10 +1,4 @@
 'use strict';
-// Local record of the messages the bot itself sent (reply.js), used to allow MESSAGE_RECALL only for our own messages.
-// File: MIXIN_SENT_LOG_FILE (default ./sent-log.jsonl, 0600), one JSON line per sent message:
-//   {"message_id","conversation_id","category","via","at"}   -- ids and metadata only, never content.
-// Compacted to the last KEEP lines when it grows past MAX_BYTES.
-// isOwn(conv, id) checks, in order: this sent-log, the context store (from_bot entries, last 24h), and gateway.log
-// lines "reply sent msg=<id> conv=<conv>" (covers messages sent before the sent-log existed).
 const fs = require('fs');
 const path = require('path');
 
@@ -33,7 +27,6 @@ function tail(f, maxBytes) {
   } finally { fs.closeSync(fd); }
 }
 
-// -> { own: true, source } | { own: false }
 function isOwn(conv, id, { botId = null } = {}) {
   if (!conv || !id) return { own: false };
   for (const l of tail(file(), 8 << 20).split('\n')) {

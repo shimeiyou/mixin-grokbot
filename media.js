@@ -1,7 +1,4 @@
 'use strict';
-// Inbound attachment download into a private dir (0700, files 0600) with size/type caps and TTL cleanup.
-// PLAIN_*: GET /attachments/{id} -> view_url -> plaintext.  ENCRYPTED_*: same download, then digest + HMAC check and
-// AES-256-CBC decrypt with the 64-byte key from the (decrypted) message JSON (see attachment-crypto.js).
 const fs = require('fs');
 const path = require('path');
 const { decryptAttachment, ciphertextLength, sha256 } = require('./attachment-crypto');
@@ -9,7 +6,6 @@ const { extForMime, sniffMime, baseMime } = require('./media-info');
 
 const DEFAULT_TYPES = 'image/,video/,audio/,application/pdf,text/,application/json,application/zip,application/msword,application/vnd.openxmlformats-officedocument.,application/vnd.ms-excel,application/vnd.ms-powerpoint';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-// Files we create are always "<message_id uuid>.<ext>"; cleanup never touches anything else in the dir.
 const NAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}$/i;
 const safeId = (id) => (UUID_RE.test(String(id || '')) ? String(id).toLowerCase() : '');
 
@@ -19,7 +15,6 @@ function createMedia({ api, log = () => {}, dir, maxBytes = 20 << 20, totalMaxBy
   const allowed = (m) => { const b = baseMime(m); return !!b && prefixes.some((p) => (p.endsWith('/') || p.endsWith('.') ? b.startsWith(p) : b === p)); };
   function ensureDir() { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); try { fs.chmodSync(dir, 0o700); } catch (_) {} }
 
-  // Only touches files this module created (NAME_RE / our .tmp names) inside `dir`.
   function cleanup(now = Date.now()) {
     let files;
     try { files = fs.readdirSync(dir); } catch (_) { return { removed: 0 }; }
@@ -55,7 +50,6 @@ function createMedia({ api, log = () => {}, dir, maxBytes = 20 << 20, totalMaxBy
     return Buffer.concat(chunks);
   }
 
-  // att: payload.attachment (public), priv: {key,digest}. Returns {local_path, local_mime, sha256, bytes, view_url}.
   async function download(messageId, att, priv = {}) {
     if (!att || !att.attachment_id) throw new Error('no attachment_id');
     if (!safeId(messageId)) throw new Error('bad message_id');

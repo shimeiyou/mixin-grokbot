@@ -63,7 +63,7 @@ if (!process.env.MIXIN_MIGRATION_MARKER) process.env.MIXIN_MIGRATION_MARKER = '/
     check('parseEndpoint rejects option-injection hosts, relative/space/quote paths, unknown schemes (ENDPOINT_CONFIG)', bad.every((v) => P(v).err === 'ENDPOINT_CONFIG'), bad.map((v) => [v, P(v).err]));
     const av = ep.sshArgs(s);
     check('ssh argv: BatchMode=yes, ConnectTimeout, ExitOnForwardFailure, ClearAllForwardings, no ControlMaster, -W <path>, "--" then host last', av.includes('BatchMode=yes') && av.some((x) => /^ConnectTimeout=\d+$/.test(x)) && av.includes('ExitOnForwardFailure=yes') && av.includes('ClearAllForwardings=yes') && av.includes('ControlPath=none') && av[av.indexOf('-W') + 1] === s.path && av[av.length - 2] === '--' && av[av.length - 1] === 'vps' && !av.some((x) => /ProxyCommand|LocalCommand|PermitLocalCommand=yes/i.test(x)), av); }
-  { const src = fs.readFileSync(path.join(HERE, 'reply.js'), 'utf8') + fs.readFileSync(path.join(HERE, 'recall.js'), 'utf8');
+  { const src = ['reply.js', 'reply-args.js', 'reply-items.js', 'reply-send.js', 'recall.js'].map((f) => fs.readFileSync(path.join(HERE, f), 'utf8')).join('\n');
     check('W-6: reply.js / recall.js contain no Blaze client (no blaze-send / blaze-conn / ws / BlazeKeystoreClient), blaze-send.js removed', !/blaze-send|blaze-conn|require\('ws'\)|BlazeKeystoreClient|createBlazeSender/.test(src) && !fs.existsSync(path.join(HERE, 'blaze-send.js'))); }
 
   const gw = await fakeGateway();

@@ -1,12 +1,4 @@
 'use strict';
-// Blaze liveness watchdog.
-// The SDK (7.6.0) only kills a socket if no *server ping* arrives for 30s. It never pings itself and never
-// checks that the app-level stream still works, so a half-dead connection (TCP/pings alive but no frames, or a
-// socket stuck in a non-OPEN state) can sit silently forever. This watchdog, every CHECK_MS:
-//   - sends a ws ping (expects a pong) and a LIST_PENDING_MESSAGES request (Blaze answers with a frame),
-//   - tracks last inbound frame / pong / ping and last OPEN time,
-//   - calls onDead(reason) if no inbound frame for STALE_MS, or no OPEN socket for STALE_MS.
-// No message content is touched or logged.
 const { randomUUID } = require('crypto');
 
 function createWatchdog({ getWs, sendRaw, log, onDead, checkMs = 20000, staleMs = 75000, now = Date.now }) {

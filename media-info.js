@@ -1,6 +1,4 @@
 'use strict';
-// Small helpers shared by gateway (inbound media) and reply.js (outbound media): mime sniffing,
-// extension mapping, image header parsing, ffprobe/ffmpeg wrappers. No external npm deps.
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -20,7 +18,6 @@ const baseMime = (m) => String(m || '').split(';')[0].trim().toLowerCase();
 const extForMime = (m) => EXT[baseMime(m)] || 'bin';
 const mimeForPath = (p) => MIME[path.extname(String(p)).slice(1).toLowerCase()] || 'application/octet-stream';
 
-// Magic-byte sniffing for the types we care about; returns null when unknown.
 function sniffMime(b) {
   if (!b || b.length < 4) return null;
   const s = (o, str) => b.length >= o + str.length && b.toString('latin1', o, o + str.length) === str;
@@ -38,7 +35,6 @@ function sniffMime(b) {
   return null;
 }
 
-// Width/height from image headers (PNG, GIF, JPEG, WebP); null if unknown.
 function imageSize(b) {
   try {
     const m = sniffMime(b);
@@ -64,7 +60,6 @@ function imageSize(b) {
 }
 
 const hasBin = (bin) => { try { execFileSync(bin, ['-version'], { stdio: 'ignore', timeout: 5000 }); return true; } catch (_) { return false; } };
-// ffprobe: {width,height,duration_ms,codec,format} or null.
 function probe(file) {
   try {
     const out = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', file], { timeout: 20000, maxBuffer: 4 << 20 }).toString());
@@ -74,7 +69,6 @@ function probe(file) {
     return { width: v ? v.width : 0, height: v ? v.height : 0, duration_ms: Math.round((dur || 0) * 1000), video_codec: v && v.codec_name, audio_codec: a && a.codec_name, format: out.format && out.format.format_name };
   } catch (_) { return null; }
 }
-// Small JPEG thumbnail as base64 (what Mixin clients accept in "thumbnail"); null on failure.
 function thumbnailB64(file, { seekS = 0, size = 64 } = {}) {
   try {
     const buf = execFileSync('ffmpeg', ['-v', 'error', ...(seekS ? ['-ss', String(seekS)] : []), '-i', file, '-frames:v', '1', '-vf', `scale=${size}:-2`, '-f', 'image2', '-c:v', 'mjpeg', '-q:v', '8', 'pipe:1'], { timeout: 20000, maxBuffer: 1 << 20 });

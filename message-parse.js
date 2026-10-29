@@ -1,10 +1,4 @@
 'use strict';
-// Parses a Blaze message (parse:false -> msg.data is base64) into:
-//   category  - legacy (ENCRYPTED_X normalized to PLAIN_X when decrypted)          [unchanged semantics]
-//   text      - legacy text, byte-identical to the old gateway toText()             [unchanged semantics]
-//   display   - readable text for every category (new; used for display_text / MIXIN_PAYLOAD_TEXT_V2)
-//   fields    - new optional structured payload fields (never contains key/digest)
-//   priv      - private data that must never reach the webhook (attachment key/digest)
 const { humanSize } = require('./media-info');
 
 const PLACEHOLDER = {
@@ -23,7 +17,6 @@ const str = (v, max = TEXT_MAX) => (v == null ? undefined : String(v).slice(0, m
 const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v));
 const clean = (o) => { for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k]; return o; };
 const secs = (ms) => `${Math.max(0, Math.round((Number(ms) || 0) / 1000))}s`;
-// "PLAIN_IMAGE" / "ENCRYPTED_IMAGE" / "SIGNAL_IMAGE" -> "IMAGE"; others unchanged.
 const baseType = (c) => String(c || '').replace(/^(PLAIN|ENCRYPTED|SIGNAL)_/, '');
 
 function attachmentFields(d, encrypted) {
@@ -39,7 +32,6 @@ function attachmentFields(d, encrypted) {
   return a;
 }
 
-// Readable text for a parsed message (also re-run after enrichment, e.g. contact names).
 function render(type, f, legacyText) {
   const a = f.attachment || {};
   const cap = a.caption ? ` ${a.caption}` : '';
@@ -68,7 +60,6 @@ function render(type, f, legacyText) {
   }
 }
 
-// decrypt(dataB64) -> Buffer (throws on failure); onDecryptError(err) for logging.
 function parseMessage(msg, { decrypt, onDecryptError } = {}) {
   const orig = msg.category || '';
   let c = orig, buf = null;
@@ -83,7 +74,6 @@ function parseMessage(msg, { decrypt, onDecryptError } = {}) {
     }
   }
   const data = buf || rawData(msg);
-  // ---- legacy text (exactly the old toText) ----
   const text = (c === 'PLAIN_TEXT' || c === 'PLAIN_POST') ? data.toString('utf8') : (PLACEHOLDER[c] || `[收到消息: ${c}]`);
   const type = baseType(c);
   if (c.startsWith('SIGNAL_')) return { category: c, text, display: '[加密消息，暂不支持]', fields: { ...fields, unsupported: 'SIGNAL' }, priv, type };
@@ -108,7 +98,6 @@ function parseMessage(msg, { decrypt, onDecryptError } = {}) {
       category: str(m && m.category, 64), created_at: str(m && m.created_at, 64),
       content: /_(TEXT|POST)$/.test((m && m.category) || '') ? str(m.content, TEXT_MAX) : undefined,
       media_name: str(m && m.media_name, 255), media_mime_type: str(m && m.media_mime_type, 128), media_size: num(m && m.media_size),
-      // media_key / media_digest deliberately dropped
     }));
   } else if (type === 'MESSAGE_RECALL') fields.recalled_message_id = str(o.message_id, 64);
   else if (type === 'MESSAGE_PIN') fields.pin = clean({ action: str(o.action, 32), message_ids: Array.isArray(o.message_ids) ? o.message_ids.slice(0, 100).map((x) => str(x, 64)) : undefined });

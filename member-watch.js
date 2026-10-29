@@ -1,15 +1,4 @@
 'use strict';
-// Group member changes (gateway side).
-// On every SYSTEM_CONVERSATION message:
-//   1) invalidate the conversation in conversation-target (memo + conv-cache.json), so the next reply re-reads it
-//      (reply.js fetches participant sessions fresh per run; nothing else caches them).
-//   2) for member actions (ADD, REMOVE, JOIN, EXIT, ROLE, CREATE), when MIXIN_MEMBER_ALERT is on (default), re-read the
-//      group (GET /conversations + POST /sessions/fetch, read-only) a few seconds later (coalesced per group) and, if a
-//      member who cannot receive encrypted messages (no session / session without public_key) APPEARS (not alerted
-//      before for this group), submit an ADDITIVE webhook event: the usual base fields + kind:"member_alert" +
-//      member_alert:{...}. Nothing is ever sent to Mixin. Only groups with at least one allowlisted member are checked.
-// State (last alerted missing set per group) in MIXIN_MEMBER_ALERT_STATE_FILE (default ./member-alert-state.json, 0600;
-// ids only). Logs carry ids and counts only.
 const fs = require('fs');
 const path = require('path');
 const { v5: uuidv5 } = require('uuid');

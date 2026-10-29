@@ -1,6 +1,4 @@
 'use strict';
-// Cheap cached read-only lookups: GET /users/{id} (sender / contact names) and GET /stickers/{id}.
-// In-memory cache + optional JSON file cache (0600, atomic). Failures are negatively cached briefly.
 const fs = require('fs');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

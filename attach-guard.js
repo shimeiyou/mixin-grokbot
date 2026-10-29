@@ -1,13 +1,4 @@
 'use strict';
-// Outbound attachment path allowlist for reply.js --image/--video/--audio/--file (2026-10-19, research item 8:
-// a prompt-injected caller must not be able to upload e.g. a key file from the host).
-//  - Only regular files whose REAL path (fs.realpathSync: symlinks and ".." resolved) is inside one of the allowed
-//    directories may be read. Allowed dirs: MIXIN_ATTACH_DIRS (colon-separated absolute paths) if set, else the
-//    gateway media dir: MIXIN_MEDIA_DIR if set, else <gateway dir>/../mixin-media
-//    (default ../mixin-media next to the gateway dir; deploy/fetch-media.sh writes there on a client host).
-//  - Remote / URL-like values (http://, https://, file://, data:, any "scheme:") and empty values are refused.
-//  - Refusal: error code ATTACH_PATH_DENIED (reply.js exits 2, nothing is sent). The checked real path is returned so
-//    every later read (stat/read/ffprobe/ffmpeg) uses the resolved path, not the caller's string.
 const fs = require('fs');
 const path = require('path');
 
@@ -28,8 +19,6 @@ function allowedDirs(env = process.env, gwDir = __dirname) {
 }
 const inside = (p, dir) => p === dir ? false : p.startsWith(dir.endsWith(path.sep) ? dir : dir + path.sep);
 
-// Returns { real } for an allowed existing path, { missing: true, real } for a not-yet-existing path that would be
-// inside an allowed dir (caller reports "file not found" as before), throws AttachDenied otherwise.
 function checkAttachPath(p, { flag = 'file', env = process.env, gwDir = __dirname } = {}) {
   const s = p == null ? '' : String(p);
   if (!s.trim()) throw new AttachDenied(`--${flag}: empty path`);

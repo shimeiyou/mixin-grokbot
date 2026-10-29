@@ -1,17 +1,5 @@
 #!/usr/bin/env node
 'use strict';
-// Read-only: per-recipient-session delivery status of one of the bot's own messages.
-//   node message-status.js --message <id> [--conversation <id>] [--since <ISO time>] [--minutes N]
-// Uses GET /messages/status/<offset_ns> (the endpoint Android RefreshOffsetJob polls; returns the latest
-// SENT/DELIVERED/READ per recipient session for messages the bot sent), GET /conversations/<id> to map
-// session -> user, and POST /sessions/fetch for each session's platform. All read-only; nothing is ACKed or sent.
-// Without --conversation, the conversation is taken from sent-log.jsonl. Default window: since the sent-log time
-// (minus 1 min), else the last 120 minutes. No bodies or keys are printed.
-// stdout: JSON {ok, message_id, conversation_id, sessions:[{user_id, session_id, platform, status, updated_at}],
-//   users:[{user_id, best_status}], summary:{SENT,DELIVERED,READ,NO_RECORD}}
-// SENT = server has it, the session hasn't fetched it. DELIVERED = the client received it (Android/iOS also send
-// DELIVERED when decryption FAILED). READ = shown in an open chat (Android/Desktop never mark a failed/unknown message READ).
-// exit: 0 found, 4 no status rows for this message in the window, 1 error, 2 usage.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const USAGE = 'usage: node message-status.js --message <uuid> [--conversation <uuid>] [--since <ISO>] [--minutes N]';
 const RANK = { SENT: 1, DELIVERED: 2, READ: 3 };

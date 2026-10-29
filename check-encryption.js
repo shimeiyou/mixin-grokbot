@@ -1,13 +1,5 @@
 #!/usr/bin/env node
 'use strict';
-// Read-only: can every member of a conversation receive encrypted messages?
-//   node check-encryption.js --conversation <id>        (also: node reply.js --check-encryption --conversation <id>)
-// Uses GET /conversations/<id> and, for members with no listed session, POST /sessions/fetch (both read-only).
-// A member can receive when it has at least one session and every session has a public_key (the rule reply.js uses
-// before it group-encrypts; otherwise the group reply falls back to a private message).
-// stdout: JSON {ok, conversation_id, category, members_total, all_can_receive, missing:[user_id], members:[{user_id,
-//   sessions, sessions_with_key, can_receive, reason?}]}. The bot itself is not listed.
-// exit: 0 everyone can receive, 3 someone can't, 1 lookup error, 2 usage. Nothing is sent; names/keys are not printed.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const USAGE = 'usage: node check-encryption.js --conversation <uuid>   (exit 0 all can receive encrypted, 3 someone cannot, 1 error, 2 usage)';
 
